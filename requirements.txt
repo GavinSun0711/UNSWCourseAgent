@@ -1,0 +1,7 @@
+langgraph
+langchain-community
+dashscope
+faiss-cpu
+pandas
+python-dotenv
+gradio

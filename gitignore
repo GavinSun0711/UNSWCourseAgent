@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Virtual env
+venv/
+.env
+.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# App artifacts
+plan.csv
+plan.ics
+
+# Vector stores / embeddings / caches
+course_vector_db*
+*.faiss
+*.npy
+*.npz
+
+# Data (keep placeholder readme)
+data/
+!data/README.md
