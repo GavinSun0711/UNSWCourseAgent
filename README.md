@@ -3,7 +3,7 @@
 
 A LangGraph-based chatbot for **UNSW course planning & Q&A**.  
 - **CSV facts**: offerings (T1/T2/T3), prerequisites, descriptions
-- **2‑year AI study plan** with *on‑demand* explanations (`请给解释`)
+- **2‑year AI study plan** with *on‑demand* explanations 
 - **Reviews RAG** (local JSONL only): recent‑year filter + source weighting
 - **Exports**: `plan.csv` and `plan.ics`
 - **Web UI**: Gradio; also supports CLI
