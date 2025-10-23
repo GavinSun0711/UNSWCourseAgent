@@ -68,7 +68,7 @@ TOP_K = 6
 
 api_key = os.getenv("DASHSCOPE_API_KEY")
 if not api_key:
-    raise EnvironmentError("❌ DASHSCOPE_API_KEY 未配置，请在 .env 中设置。")
+    raise EnvironmentError("DASHSCOPE_API_KEY 未配置，请在 .env 中设置。")
 #print("🔑 DASHSCOPE_API_KEY:", api_key[:8] + "..." + api_key[-4:])
 
 # ---------------- Load Data ----------------
@@ -96,14 +96,14 @@ try:
         docs.append(Document(page_content="\n".join([x for x in parts if str(x).strip()])))
     embeddings = DashScopeEmbeddings(model=EMBED_MODEL, dashscope_api_key=api_key)
     if not os.path.exists(VECTOR_DB_PATH):
-        print("🧠 生成向量数据库...")
+        print("生成向量数据库...")
         vectorstore = FAISS.from_documents(docs, embeddings)
         vectorstore.save_local(VECTOR_DB_PATH)
     else:
-        print("📂 加载已有向量数据库...")
+        print("加载已有向量数据库...")
         vectorstore = FAISS.load_local(VECTOR_DB_PATH, embeddings, allow_dangerous_deserialization=True)
 except Exception as e:
-    print("⚠️ 检索向量库不可用：", e)
+    print("⚠检索向量库不可用：", e)
     vectorstore = None
 
 
@@ -256,7 +256,7 @@ def summarize_reviews_for(code: str) -> str:
     reps = [_brief(r) for r in items[:3]]
     reps = [x for x in reps if x]
 
-    lines = [f"⭐ {code} 课程口碑（{len(items)} 条）"]
+    lines = [f"{code} 课程口碑（{len(items)} 条）"]
     if avg_rating is not None: lines.append(f"- 综合评分：{avg_rating}/5")
     if avg_diff is not None: lines.append(f"- 难度：{avg_diff}/5")
     if wl_cnt:
@@ -400,7 +400,7 @@ def extract_text(result):
 
 def safe_answer(content):
     if content is None:
-        return {"answer": [HumanMessage(content="⚠️ 没有可返回的内容。")]}
+        return {"answer": [HumanMessage(content="没有可返回的内容。")]}
     if isinstance(content, str):
         return {"answer": [HumanMessage(content=content)]}
     if isinstance(content, list):
@@ -576,7 +576,7 @@ def _auto_category_by_code(code: str) -> str:
     if u in PROJECT_ROUTE or u in RESEARCH_ROUTE: return "research/capstone/project"
     if u in DKE_CODES:  return "disciplinary knowledge elective courses"
     if u in ELECTIVE_CODES: return "electives"
-    return ""   # ⚠️ 不归类，避免把未知课程误判成选修
+    return ""   #  不归类，避免把未知课程误判成选修
 
 def _row_auto_cat(row):
     raw = str(row.get("Category","")).strip().lower()
@@ -1062,7 +1062,7 @@ def chitchat_node(state):
     query = _extract_latest_user_utterance(raw)
     user_lower = query.lower()
     if any(g in user_lower for g in ["你好","hello","hi","嗨","在吗","thanks","谢谢","早上好","下午好","晚上好"]):
-        return safe_answer("😊 我在～想了解哪门课？")
+        return safe_answer("我在～想了解哪门课？")
     prompt = f"""
 你是一位友好、轻松、语气自然的大学助手。请根据用户的输入，用一句中文自然回复：口语化、亲切、不啰嗦、不换行。允许至多一个表情。
 用户说：「{query}」
@@ -1072,7 +1072,7 @@ def chitchat_node(state):
         result = Generation.call(model=LLM_MODEL, prompt=prompt)
         text = extract_text(result).strip() or "🤖 我在呢～想了解哪门课？"
     except Exception:
-        text = "🤖 我在呢～想了解哪门课？"
+        text = "我在呢～想了解哪门课？"
     return safe_answer(text)
 
 def search_course_node(state):
@@ -1081,20 +1081,20 @@ def search_course_node(state):
     row = lookup_relaxed(query)
     if row is not None:
         r = row
-        info = [f"📘 {r['CourseCode']} - {r.get('CourseName','')} ({r.get('Credits','')}UOC, {r.get('OfferingTerms','')})"]
+        info = [f" {r['CourseCode']} - {r.get('CourseName','')} ({r.get('Credits','')}UOC, {r.get('OfferingTerms','')})"]
         if r.get("AutoCategory") or r.get("Category"):
-            info.append(f"📂 类别：{r.get('AutoCategory') or r.get('Category')}")
-        if r.get("ConditionsForEnrolment"): info.append(f"🔑 前置：{r['ConditionsForEnrolment']}")
-        if r.get("EquivalentCourses"): info.append(f"🔁 等价：{r['EquivalentCourses']}")
-        if r.get("ExclusionCourses"): info.append(f"🚫 互斥：{r['ExclusionCourses']}")
-        if r.get("Description"): info.append(f"📝 {r['Description']}")
+            info.append(f" 类别：{r.get('AutoCategory') or r.get('Category')}")
+        if r.get("ConditionsForEnrolment"): info.append(f" 前置：{r['ConditionsForEnrolment']}")
+        if r.get("EquivalentCourses"): info.append(f" 等价：{r['EquivalentCourses']}")
+        if r.get("ExclusionCourses"): info.append(f" 互斥：{r['ExclusionCourses']}")
+        if r.get("Description"): info.append(f" {r['Description']}")
         return safe_answer("\n".join(info))
     if vectorstore is not None:
         results = vectorstore.similarity_search(query, k=TOP_K)
         if results:
-            answer = [f"{i+1}. 📘 {r.page_content}" for i, r in enumerate(results)]
+            answer = [f"{i+1}.  {r.page_content}" for i, r in enumerate(results)]
             return safe_answer(answer)
-    return safe_answer("❌ 没找到相关课程。")
+    return safe_answer(" 没找到相关课程。")
 
 def term_query_node(state):
     raw_query = state.get("query", "")
@@ -1117,7 +1117,7 @@ def term_query_node(state):
 
     # 4) 全部失败 → 返回提示
     if rows is None or rows.empty:
-        return safe_answer("❌ 未识别到课程号。")
+        return safe_answer(" 未识别到课程号。")
 
     # 5) 输出课程的开课时间
     outputs = []
@@ -1125,9 +1125,9 @@ def term_query_node(state):
         code = str(r.get("CourseCode", "")).strip()
         terms = str(r.get("OfferingTerms", "")).strip() or "N/A"
         if terms.lower() in ["not offered", "nan", "none", "", "n/a"]:
-            outputs.append(f"⚠️ {code} 当前未在官方Term列表中开设。")
+            outputs.append(f"⚠ {code} 当前未在官方Term列表中开设。")
         else:
-            outputs.append(f"📅 {code} 在 {terms} 开课。")
+            outputs.append(f" {code} 在 {terms} 开课。")
     return safe_answer("\n".join(outputs))
 
 def detail_query_node(state):
@@ -1142,40 +1142,40 @@ def detail_query_node(state):
     if rows is None or rows.empty:
         _, nums = _extract_candidates_from_query(query)
         hint = f"（请尝试完整写法，如 COMP{nums[0]}）" if nums else ""
-        return safe_answer(f"❌ 没找到相关课程。{hint}".strip())
+        return safe_answer(f" 没找到相关课程。{hint}".strip())
     outputs = []
     for _, r in rows.iterrows():
         code = str(r.get("CourseCode", "")).strip()
         if detail == "prereq":
             val = str(r.get("ConditionsForEnrolment", "")).strip() or "（未在Handbook明确给出）"
-            outputs.append(f"🔑 {code} 的前置/限修：{val}")
+            outputs.append(f" {code} 的前置/限修：{val}")
         elif detail == "exclusion":
             val = str(r.get("ExclusionCourses", "")).strip() or "（无）"
-            outputs.append(f"🚫 {code} 的互斥课程：{val}")
+            outputs.append(f" {code} 的互斥课程：{val}")
         elif detail == "equivalent":
             val = str(r.get("EquivalentCourses", "")).strip() or "（无）"
-            outputs.append(f"🔁 {code} 的等价课程：{val}")
+            outputs.append(f" {code} 的等价课程：{val}")
         elif detail == "category":
             val = str(r.get("AutoCategory", r.get("Category",""))).strip() or "（未标注类别）"
-            outputs.append(f"📂 {code} 属于：{val}")
+            outputs.append(f" {code} 属于：{val}")
         elif detail == "desc":
             name = str(r.get("CourseName","")).strip()
             desc = str(r.get("Description","")).strip() or "（暂无描述）"
-            outputs.append(f"📝 {code}{' - ' + name if name else ''} 的课程描述：{desc}")
+            outputs.append(f" {code}{' - ' + name if name else ''} 的课程描述：{desc}")
         else:
             parts = [
-                f"📘 {code} - {str(r.get('CourseName',''))} ({str(r.get('Credits',''))}UOC, {str(r.get('OfferingTerms',''))})",
+                f" {code} - {str(r.get('CourseName',''))} ({str(r.get('Credits',''))}UOC, {str(r.get('OfferingTerms',''))})",
             ]
             if str(r.get("AutoCategory", r.get("Category",""))).strip():
-                parts.append(f"📂 类别：{r.get('AutoCategory', r.get('Category',''))}")
+                parts.append(f" 类别：{r.get('AutoCategory', r.get('Category',''))}")
             if str(r.get("ConditionsForEnrolment","")).strip():
-                parts.append(f"🔑 前置：{r.get('ConditionsForEnrolment')}")
+                parts.append(f" 前置：{r.get('ConditionsForEnrolment')}")
             if str(r.get("EquivalentCourses","")).strip():
-                parts.append(f"🔁 等价：{r.get('EquivalentCourses')}")
+                parts.append(f" 等价：{r.get('EquivalentCourses')}")
             if str(r.get("ExclusionCourses","")).strip():
-                parts.append(f"🚫 互斥：{r.get('ExclusionCourses')}")
+                parts.append(f" 互斥：{r.get('ExclusionCourses')}")
             if str(r.get("Description","")).strip():
-                parts.append(f"📝 描述：{r.get('Description')}")
+                parts.append(f" 描述：{r.get('Description')}")
             outputs.append("\n".join(parts))
     return safe_answer("\n".join(outputs))
 
@@ -1212,7 +1212,7 @@ def recommend_course_node(state):
     cand = df[df["OfferingTerms"].str.upper().str.contains(term, na=False)] if term else df.copy()
     if term: cand = cand[~cand["OfferingTerms"].str.contains("NOT OFFERED", na=False)]
     if cand.empty:
-        return safe_answer(f"⚠️ 当前未找到在 {term} 开设的课程。")
+        return safe_answer(f" 当前未找到在 {term} 开设的课程。")
     def score_row(r: pd.Series) -> float:
         cat = str(r.get("AutoCategory", r.get("Category","")))
         base = 100 - CATEGORY_RANK.get(cat, 9) * 10
@@ -1240,26 +1240,26 @@ def recommend_course_node(state):
         if term: tags.append(term)
         meta = " | ".join(tags)
         lines = [
-            f"{i}. 📘 {r.CourseCode} - {getattr(r,'CourseName','')} ({getattr(r,'Credits','')}UOC, {getattr(r,'OfferingTerms','')})",
-            f"   🏷️ {meta}" if meta else "",
-            f"   📝 {short_desc}" if short_desc else "",
-            f"   🔑 前置：{cond}" if cond else "",
-            f"   🔁 等价：{eq}" if eq else "",
-            f"   🚫 互斥：{ex}" if ex else "",
+            f"{i}.  {r.CourseCode} - {getattr(r,'CourseName','')} ({getattr(r,'Credits','')}UOC, {getattr(r,'OfferingTerms','')})",
+            f"    {meta}" if meta else "",
+            f"    {short_desc}" if short_desc else "",
+            f"    前置：{cond}" if cond else "",
+            f"    等价：{eq}" if eq else "",
+            f"    互斥：{ex}" if ex else "",
         ]
         items.append("\n".join([x for x in lines if x]))
-    header = f"🎯 为你推荐的 {term or topic} 课程（共 {len(items)} 门）："
+    header = f" 为你推荐的 {term or topic} 课程（共 {len(items)} 门）："
     return safe_answer([header] + items)
 
 def plan_course_node(state):
     topic = state.get("topic") or "AI"
     selected = df[df["Description"].str.lower().str.contains(topic.lower(), na=False)]
     if selected.empty:
-        return safe_answer(f"❌ 未找到与 {topic} 相关的课程。")
+        return safe_answer(f" 未找到与 {topic} 相关的课程。")
     selected["_rank"] = selected["Category"].map(lambda c: CATEGORY_RANK.get(str(c), 9))
     plan = selected.sort_values(["_rank", "CourseCode"]).head(6)
     plan_text = [f"{i+1}. {r.CourseCode} - {r.CourseName} ({r.OfferingTerms})" for i, r in plan.iterrows()]
-    return safe_answer([f"🧠 {topic.upper()} 方向建议修读顺序（优先核心）："] + plan_text)
+    return safe_answer([f" {topic.upper()} 方向建议修读顺序（优先核心）："] + plan_text)
 
 # === Explain Panel Helpers ===
 def _lookup_course(code: str) -> pd.Series | None:
@@ -1292,7 +1292,7 @@ def build_explain_panel(schedule: dict[int, list[str]], terms: list[str], state:
         parts = []
         if ex_codes: parts.append("排除课程：" + "、".join(ex_codes))
         if ex_topics: parts.append("排除主题：" + "、".join(ex_topics))
-        lines.append("🧠 偏好记忆：" + "；".join(parts))
+        lines.append(" 偏好记忆：" + "；".join(parts))
     # 每学期解释
     for i, term in enumerate(terms, 1):
         xs = schedule.get(i, [])
@@ -1301,16 +1301,16 @@ def build_explain_panel(schedule: dict[int, list[str]], terms: list[str], state:
         for code in xs:
             lines.append("   - " + _explain_course_line(code))
     # 引用：来自 CSV 数据源
-    lines.append("🔗 引用：课程名称/先修/等价/互斥/开课学期均来自本地 CSV（" + os.path.basename(CSV_FILE) + "）。")
+    lines.append(" 引用：课程名称/先修/等价/互斥/开课学期均来自本地 CSV（" + os.path.basename(CSV_FILE) + "）。")
     return "\n".join(lines)
 def grad_plan_node(state):
     global LAST_PLAN_SCHEDULE, LAST_PLAN_TERMS, LAST_PLAN_STATE
     # On-demand Explain: only show explanation for the last generated plan
     if state.get("explain_only"):
         if LAST_PLAN_SCHEDULE is None or LAST_PLAN_TERMS is None:
-            return safe_answer("📝 还没有可解释的计划。请先让我生成一次选课建议，再说“请给解释”。")
+            return safe_answer(" 还没有可解释的计划。请先让我生成一次选课建议，再说“请给解释”。")
         explain = build_explain_panel(LAST_PLAN_SCHEDULE, LAST_PLAN_TERMS, LAST_PLAN_STATE)
-        return safe_answer("🧾 解释与引用\n" + explain)
+        return safe_answer(" 解释与引用\n" + explain)
     raw = state.get("query","")
     latest = _extract_latest_user_utterance(raw)
 
@@ -1326,7 +1326,7 @@ def grad_plan_node(state):
         exclude_codes=set(state.get("exclude_codes", set())), exclude_topics=set(state.get("exclude_topics", set()))
     )
 
-    lines = ["📚 AI方向两年学习建议（草案）"]
+    lines = [" AI方向两年学习建议（草案）"]
     for i, t in enumerate(terms, 1):
         xs = schedule[i]
         lines.append(f"{i}. {t}： " + ("，".join(xs) if xs else "（暂未安排）"))
@@ -1334,15 +1334,15 @@ def grad_plan_node(state):
     if missing:
         name_map = {"found_core": "基础核心课","adv_core": "高级核心课","ai_core": "AI核心课","dke": "DKE","elective": "一般选修","project": "毕业研究/项目","noncap_total": "非Capstone学分总量"}
         warn = "；".join([f"{name_map.get(k,k)} 仍缺约 {u} 学分" for k,u in missing])
-        lines.append(f"\n⚠️ 覆盖提示：{warn}。可补充同类课程或调整学期以满足毕业标准。")
+        lines.append(f"\n️ 覆盖提示：{warn}。可补充同类课程或调整学期以满足毕业标准。")
 
     if route_type != "未确定":
-        lines.append(f"\n🏁 当前规划路线：{route_type}")
+        lines.append(f"\n 当前规划路线：{route_type}")
 
     if term_loads:
-        lines.append(f"\n🧩 学期负载采用：{'-'.join(map(str, term_loads[:3]))} / {'-'.join(map(str, term_loads[3:]))}（每学期最多3门，最少1门）")
+        lines.append(f"\n 学期负载采用：{'-'.join(map(str, term_loads[:3]))} / {'-'.join(map(str, term_loads[3:]))}（每学期最多3门，最少1门）")
 
-    lines.append("\n🔎 说明：优先安排 3 门基础核心课，其余（高级核心/AI核心/DKE/一般选修）可穿插；"
+    lines.append("\n 说明：优先安排 3 门基础核心课，其余（高级核心/AI核心/DKE/一般选修）可穿插；"
                  "Capstone/Research 在先修允许时尽量安排到后两学期；严格遵守 CSV 的开课学期。")
 
     # Cache the latest plan for on-demand explanation
@@ -1418,12 +1418,12 @@ def export_node(state):
     except NameError:
         _has = False
     if not _has:
-        return safe_answer("📝 还没有可导出的计划。请先让我生成一次选课建议，再说“导出计划”。")
+        return safe_answer(" 还没有可导出的计划。请先让我生成一次选课建议，再说“导出计划”。")
     try:
         out = export_plan_csv(LAST_PLAN_SCHEDULE, LAST_PLAN_TERMS, df, out_path=path, include_desc=True)
-        return safe_answer(f"✅ 已导出：{out}\n包含列：Term, CourseCode, CourseName, Description")
+        return safe_answer(f" 已导出：{out}\n包含列：Term, CourseCode, CourseName, Description")
     except Exception as e:
-        return safe_answer(f"⚠️ 导出失败：{e}")
+        return safe_answer(f" 导出失败：{e}")
 
 # === Export ICS Node ===
 def export_ics_node(state):
@@ -1433,12 +1433,12 @@ def export_ics_node(state):
     except NameError:
         _has = False
     if not _has:
-        return safe_answer("📝 还没有可导出的计划。请先让我生成一次选课建议，再说“导出日历”。")
+        return safe_answer(" 还没有可导出的计划。请先让我生成一次选课建议，再说“导出日历”。")
     try:
         out = export_plan_ics(LAST_PLAN_SCHEDULE, LAST_PLAN_TERMS, df, out_path=path)
-        return safe_answer(f"✅ 已导出：{out}\n用法：在 Google/Apple/Outlook 日历中导入 .ics 即可（All-day 事件，每门课一条）。")
+        return safe_answer(f" 已导出：{out}\n用法：在 Google/Apple/Outlook 日历中导入 .ics 即可（All-day 事件，每门课一条）。")
     except Exception as e:
-        return safe_answer(f"⚠️ 导出失败：{e}")
+        return safe_answer(f" 导出失败：{e}")
 
 # =========================================================
 # Router（含“研究/项目路线”偏好、描述识别）
@@ -1564,7 +1564,7 @@ def agent_respond(user_text: str) -> str:
             return "\n".join(parts).strip()
         return str(out)
     except Exception as e:
-        return f"⚠️ 出错了：{e}"
+        return f" 出错了：{e}"
 
 
 # =========================================================
@@ -1572,22 +1572,22 @@ def agent_respond(user_text: str) -> str:
 # =========================================================
 if __name__ == "__main__":
     print("\n🎓 UNSW Course Advisor Agent 启动成功！")
-    #print("📄 使用数据:", CSV_FILE)
-    print("💬 hi 你可以问我关于选课的各类问题哦~ \n")
+    #print(" 使用数据:", CSV_FILE)
+    print(" hi 你可以问我关于选课的各类问题哦~ \n")
     print("问完问题 输入exit退出哦~ \n")
 
     context_memory = ""
     while True:
-        q = input("💬 请输入问题：")
+        q = input(" 请输入问题：")
         if q.lower() in ["exit","quit","q"]:
-            print("👋 再见！"); break
+            print(" 再见！"); break
         try:
             full_query = context_memory + f"\n用户：{q}"
             result = app.invoke({"query": full_query})
             all_answers = result.get("answer", [])
             output_lines = [a.content if hasattr(a, "content") else str(a) for a in all_answers]
-            print("\n🤖 回复：\n" + "\n".join(output_lines) + "\n")
+            print("\n 回复：\n" + "\n".join(output_lines) + "\n")
             context_memory += f"\n用户：{q}\n助手：{output_lines[-1] if output_lines else ''}"
             context_memory = "\n".join(context_memory.splitlines()[-8:])
         except Exception as e:
-            print(f"⚠️ 出现错误：{e}\n")
+            print(f" 出现错误：{e}\n")
