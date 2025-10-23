@@ -166,6 +166,68 @@ def _fmt_pct(x: float) -> str:
     except Exception:
         return "0%"
 
+# === LLM Compare (RAG: retrieval -> augmentation -> generation) ===
+def _course_header_for_llm(code: str) -> str:
+    """把课程的关键信息压成一行，给 LLM 当上下文线索。"""
+    r = _lookup_course(code)
+    if r is None:
+        return code.upper()
+    bits = [f"{str(r.get('CourseCode','')).upper()} - {r.get('CourseName','')}"]
+    uoc = str(r.get("Credits","")).strip()
+    terms = str(r.get("OfferingTerms","")).strip()
+    cat = (r.get("AutoCategory") or r.get("Category") or "").strip()
+    if uoc or terms: bits.append(f"({uoc}UOC, {terms})")
+    if cat: bits.append(f"[{cat}]")
+    cond = str(r.get("ConditionsForEnrolment","")).strip()
+    if cond: bits.append(f"Prereq: {cond}")
+    return " ".join([b for b in bits if b])
+
+def llm_compare_reviews(a: str, b: str, route_pref: str | None = None) -> str:
+    """
+    检索阶段：summarize_reviews_for(a/b) 从本地 JSONL 拉到证据
+    增强阶段：我们把评分/难度/工作量/代表性评论作为 Evidence 压进去
+    生成阶段：把 Evidence 注入到 LLM prompt，生成“比较+建议”
+    """
+    a, b = str(a).upper(), str(b).upper()
+    sa = summarize_reviews_for(a)  # retrieval+轻摘要
+    sb = summarize_reviews_for(b)
+
+    ha = _course_header_for_llm(a)
+    hb = _course_header_for_llm(b)
+
+    # 给 LLM 的清晰中文指令（可按需收紧字数/结构）
+    pref = route_pref or "auto"
+    prompt = f"""
+你是一名克制、客观的课程顾问。基于“证据文本”，比较两门课并给出建议。
+要求：
+- 先各用 2-3 条要点，概括 A/B 的「优点/风险点/工作量与难度」；
+- 然后用 1 段话做“对比总结”（指出适合人群与取舍）；
+- 最后给出“综合建议”一行：若用户偏好为 research/project，则结合偏好给出更明确选择；否则给出平衡建议。
+- 保持中文、避免夸大，不编造证据中没有的信息。总长控制在 120~150 字左右。
+
+用户偏好：{pref}
+
+课程A：{ha}
+证据A（来自本地评价库）： 
+{sa}
+
+---
+课程B：{hb}
+证据B（来自本地评价库）：
+{sb}
+
+现在开始输出。
+""".strip()
+
+    # 直接用你项目里已在用的 DashScope LLM
+    result = Generation.call(model=LLM_MODEL, prompt=prompt)
+    text = extract_text(result).strip()
+    if not text:
+        # 兜底：如果 LLM 空回应，退回紧凑版
+        return compare_reviews_compact(a, b, route_pref=pref)
+    return text
+
+
 def summarize_reviews_for(code: str) -> str:
     code = str(code).upper().strip()
     items = REVIEWS_BY_CODE.get(code, [])
@@ -1037,13 +1099,27 @@ def search_course_node(state):
 def term_query_node(state):
     raw_query = state.get("query", "")
     query = _extract_latest_user_utterance(raw_query)
+
+    # 1) 严格匹配
     rows = lookup_strict(query)
+
+    # 2) 严格匹配失败 → FAISS 语义匹配
+    if rows is None or rows.empty:
+        r = lookup_relaxed(query)
+        if r is not None:
+            rows = df[df["CourseCode"].str.upper().eq(str(r["CourseCode"]).upper())]
+
+    # 3) 回溯上下文中的最近课程号
     if rows is None or rows.empty:
         recent = _recent_codes_from_context(raw_query, limit=1)
         if recent:
             rows = df[df["CourseCode"].str.upper().isin([c.upper() for c in recent])]
-        if rows is None or rows.empty:
-            return safe_answer("❌ 未识别到课程号。")
+
+    # 4) 全部失败 → 返回提示
+    if rows is None or rows.empty:
+        return safe_answer("❌ 未识别到课程号。")
+
+    # 5) 输出课程的开课时间
     outputs = []
     for _, r in rows.iterrows():
         code = str(r.get("CourseCode", "")).strip()
@@ -1317,15 +1393,21 @@ def reviews_node(state):
     # 对比场景
     if len(codes) >= 2 and _re.search(r"(对比|区别|diff|compare|vs|比较)", q.lower()):
         a, b = codes[:2]
-        return safe_answer(compare_reviews(a, b))
+        try:
+            return safe_answer(llm_compare_reviews(a, b, route_pref=state.get("route_pref")))
+        except Exception:
+            # 失败兜底
+            return safe_answer(compare_reviews(a, b))
     # 紧凑推荐语义
     if len(codes) >= 2 and _re.search(r"(更推荐|哪个好|选哪|recommend)", q.lower()):
         a, b = codes[:2]
-        return safe_answer(compare_reviews_compact(a, b, route_pref=state.get("route_pref")))
+        try:
+            return safe_answer(llm_compare_reviews(a, b, route_pref=state.get("route_pref")))
+        except Exception:
+            return safe_answer(compare_reviews_compact(a, b, route_pref=state.get("route_pref")))
     # 单课评价
     if len(codes) >= 1:
         return safe_answer(summarize_reviews_for(codes[0]))
-    # 没抓到课程号：提示用户提供
     return safe_answer("想看哪门课的口碑？请带上课程号（如 COMP9414）。\n例如：COMP9414 评价怎么样？")
 
 # === Export Node ===
