@@ -41,7 +41,7 @@ cp .env.example .env   # 设置 DASHSCOPE_API_KEY
 - `COMPLS_courses.csv`：基于 **UNSW Handbook** 爬取整理，包含课程结构化信息。  
 - `course_reviews.jsonl`：模拟学生口碑数据，用于课程评价检索与推荐优化。  
 
-### 🚀 运行方式  
+### 运行方式  
 ```bash
 # 命令行模式
 python UNSW_Course_Agent.py
