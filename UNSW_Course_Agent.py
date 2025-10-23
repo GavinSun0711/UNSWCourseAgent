@@ -39,51 +39,7 @@ def export_plan_ics(schedule: dict[int, list[str]], terms: list[str], df_all: pd
         f.write(content)
     return out_path
 # -*- coding: utf-8 -*-
-"""
-🎓 UNSW Course Agent
-- 多课程严格匹配（DataFrame）+ 尾号/模糊匹配 + 向量检索兜底
-- 对话回指：支持“它/这个/前置/互斥/描述”等；Web 端把上下文拼接给后端
-- 课程信息查询：开课学期/先修/互斥/等价/类别/简介 全覆盖
-- AI 方向两年选课建议（精准毕业规则）
-  • 总计 96 UOC；Capstone/Research 18 UOC；非 Capstone 78 UOC（13×6UOC）
-  • 严格类别映射 + Elective 白名单 + DKE 列表
-  • 路线偏好：Project（COMP9900 + GSOE9010/9011 + ≥1 DKE）
-             或 Research（COMP9991+9993；或 9991+9992 + ≥1 DKE）
-  • 支持“已修课程”（如 COMP9021/9024/…）、“排除课程/主题”（如 不要9414/不要CV）、
-    “学期负载”（233 233 / 332 332 等）
-  • 排课策略：先 Foundational Core，再交错 Adv/AI/DKE/Elective；遵守开课学期与先修
-  • 解释按需：先生成计划，再说“请给解释”→ 逐门解释 + 引用（来自本地 CSV）
-- 课程口碑（RAG，仅本地 JSONL）
-  • 汇总 评分/难度/工作量 + 亮点/痛点 + 代表性评论
-  • 支持对比：如“9414 vs 9814 哪个更推荐”
-- 导出功能
-  • “导出计划” → 生成 plan.csv（Term, CourseCode, CourseName, Description）
-  • “导出日历” → 生成 plan.ics（每门课 1 条 All-day 事件，可导入 Google/Apple/Outlook）
-- Web UI（Gradio）
-  • ui_gradio.py 调用 agent_respond()，内置示例问题与一键导出按钮
 
-依赖：
-  pip install -U langgraph langchain-community dashscope python-dotenv faiss-cpu pandas gradio
-
-准备：
-  - 将 COMPLS_courses.csv 与本文件放同一目录（或在代码中调整路径）
-  - 在 .env 中设置 DASHSCOPE_API_KEY
-  - （可选）准备 course_reviews.jsonl（每行一个 JSON 对象）
-
-运行：
-  # 命令行
-  python UNSW_Course_Agent.py
-
-  # 网页版（Gradio）
-  python ui_gradio.py   → 打开 http://127.0.0.1:7860/
-
-常用示例：
-  - 给我AI两年选课建议 我要project 233 233 不要9414
-  - 请给解释
-  - 9414在T几 / 它的课程描述 / 它的前置
-  - COMP9414 评价怎么样 / 9414 vs 9814 哪个更推荐
-  - 导出计划 / 导出日历
-"""
 
 import os, re, json
 import pandas as pd
@@ -162,7 +118,7 @@ try:
     with open(REVIEWS_FILE, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
-            if not line: 
+            if not line:
                 continue
             _reviews_raw.append(json.loads(line))
 except FileNotFoundError:
@@ -245,7 +201,7 @@ def summarize_reviews_for(code: str) -> str:
         lines.append(f"- 工作量：heavy {_fmt_pct(wl_cnt.get('heavy',0)/wl_total)} / "
                      f"medium {_fmt_pct(wl_cnt.get('medium',0)/wl_total)} / "
                      f"light {_fmt_pct(wl_cnt.get('light',0)/wl_total)}")
-    if pros: 
+    if pros:
         from collections import Counter as _C
         top = [w for w,_ in _C(pros).most_common(3)]
         lines.append(f"- 亮点：{'、'.join(top)}")
@@ -264,6 +220,67 @@ def summarize_reviews_for(code: str) -> str:
 def compare_reviews(a: str, b: str) -> str:
     sa, sb = summarize_reviews_for(a), summarize_reviews_for(b)
     return f"{sa}\n\n——— 对比 ——\n\n{sb}"
+
+
+
+# === NEW: concise compare & recommendation ===
+import re as _re
+
+def _is_ai_course(code: str) -> bool:
+    r = _lookup_course(code)
+    if r is None:
+        return False
+    cat = (r.get("AutoCategory") or r.get("Category","") or "").lower()
+    text = ((r.get("CourseName","") or "") + " " + (r.get("Description","") or "")).lower()
+    return ("artificial intelligence" in cat) or bool(_re.search(r"\b(ai|machine learning|ml|neural|reinforcement|knowledge representation|logic)\b", text))
+
+def _is_systems_course(code: str) -> bool:
+    r = _lookup_course(code)
+    if r is None:
+        return False
+    text = ((r.get("CourseName","") or "") + " " + (r.get("Description","") or "")).lower()
+    return bool(_re.search(r"\b(network|protocol|internet|communication|distributed|system design|systems)\b", text))
+
+def _concise_review_line(code: str) -> str:
+    code = str(code).upper()
+    items = REVIEWS_BY_CODE.get(code, [])
+    wl = ""
+    if items:
+        from collections import Counter as _C
+        wls = [str(x.get("workload","")).lower() for x in items if x.get("workload")]
+        if wls:
+            top = _C(wls).most_common(1)[0][0]
+            wl = {"heavy":"作业量较大","medium":"工作量中等","light":"工作量较轻"}.get(top, "")
+    focus = ""
+    if _is_ai_course(code):
+        focus = "课程实践性强，适合对 AI 应用感兴趣的学生"
+    elif _is_systems_course(code):
+        focus = "课程结构清晰，偏系统/网络设计"
+    bits = [b for b in [focus, wl] if b]
+    return f"{code}：" + ("；".join(bits) if bits else "暂无可用评价（可在 course_reviews.jsonl 中补充）")
+
+def compare_reviews_compact(a: str, b: str, route_pref: str | None = None) -> str:
+    a, b = str(a).upper(), str(b).upper()
+    la, lb = _concise_review_line(a), _concise_review_line(b)
+
+    # 生成“综合建议”
+    ai_first  = a if _is_ai_course(a) else (b if _is_ai_course(b) else None)
+    sys_first = a if _is_systems_course(a) else (b if _is_systems_course(b) else None)
+
+    rec = ""
+    if route_pref in ("research","project"):
+        if route_pref == "research" and ai_first:
+            rec = f"更推荐：{ai_first}（研究/AI 路线更匹配）。"
+        elif route_pref == "project" and sys_first:
+            rec = f"更推荐：{sys_first}（系统/项目实践更匹配）。"
+
+    if not rec and ai_first and sys_first and ai_first != sys_first:
+        rec = f"综合建议：若倾向研究路线，优先考虑 {ai_first}；若重视系统设计，可选择 {sys_first}。"
+    if not rec:
+        rec = "综合建议：两门课方向不同，建议结合兴趣与先修选择。"
+
+    return "📈 课程口碑对比：\n" + f"{la}\n{lb}\n\n" + rec
+
 # =========================================================
 # Last plan cache (for on-demand explain)
 # =========================================================
@@ -1298,9 +1315,13 @@ def reviews_node(state):
     codes = _extract_codes_from_text(q)
     import re as _re
     # 对比场景
-    if len(codes) >= 2 and _re.search(r"(对比|区别|diff|compare|哪个好|更推荐|vs|比较)", q.lower()):
+    if len(codes) >= 2 and _re.search(r"(对比|区别|diff|compare|vs|比较)", q.lower()):
         a, b = codes[:2]
         return safe_answer(compare_reviews(a, b))
+    # 紧凑推荐语义
+    if len(codes) >= 2 and _re.search(r"(更推荐|哪个好|选哪|recommend)", q.lower()):
+        a, b = codes[:2]
+        return safe_answer(compare_reviews_compact(a, b, route_pref=state.get("route_pref")))
     # 单课评价
     if len(codes) >= 1:
         return safe_answer(summarize_reviews_for(codes[0]))
@@ -1343,6 +1364,12 @@ def export_ics_node(state):
 def router_node(state):
     q = _extract_latest_user_utterance(state.get("query", ""))
     q_low = q.lower()
+    # 显式路线偏好（提前解析，便于 reviews 节点使用）
+    route_pref = "auto"
+    if re.search(r"(research|thesis|9991|9992|9993|研究|论文)", q_low):
+        route_pref = "research"
+    if re.search(r"(project|capstone|9900|gsoe9010|gsoe9011|项目|毕设|课设)", q_low):
+        route_pref = "project"
     if re.search(r"(导出|保存).*(计划|csv)|\bexport\b.*\bcsv\b|导出csv|导出课程表", q_low):
         return {"next_node": "export"}
     if re.search(r"(导出|保存).*(日历|ics)|\bexport\b.*\bics\b|导出日历|导出ics", q_low):
@@ -1350,7 +1377,7 @@ def router_node(state):
     # 课程评价/口碑/难度/工作量/对比 → reviews
     _codes_in_q = re.findall(r"(?<![A-Z0-9])([A-Z]{4}\d{4})(?![A-Z0-9])", q.upper())
     if re.search(r"(评价|口碑|测评|review|reviews|难度|workload|作业多不多|作业|哪个好|更推荐|对比|区别|比较|vs)", q_low):
-        return {"next_node": "reviews"}
+        return {"next_node": "reviews", "route_pref": route_pref}
     # On-demand explain trigger
     if re.search(r"(给.*解释|请给解释|解释与引用|^解释$|解释一下|解释下|explain|why|为什么)", q_low):
         return {"next_node": "grad_plan", "explain_only": True, "route_pref": state.get("route_pref","auto")}
