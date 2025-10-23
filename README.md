@@ -67,7 +67,7 @@ python ui_gradio.py
    └─ COMPLS_courses.csv
 ```
 
-### 🧠 工程特性  
+### 工程特性  
 - 模块化架构，数据层与逻辑层完全解耦。  
 - 多级兜底策略：模型异常、数据缺失与输入错误均可安全恢复。  
 - 支持单元测试与模块化调试。  
@@ -95,7 +95,7 @@ It integrates **RAG (Retrieval-Augmented Generation)**, **semantic retrieval**, 
   “When is 9414 offered?” → “What is it about?”  
 - **Interface** — CLI and Gradio-based Web UI.  
 
-### ⚙️ Tech Stack  
+### Tech Stack  
 - **LangGraph** — Dialogue flow orchestration.  
 - **DashScope/Qwen** — LLM for intent recognition & NLG.  
 - **FAISS + Embedding** — Semantic retrieval.  
