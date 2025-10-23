@@ -6,7 +6,7 @@ import UNSW_Course_Agent as agent
 
 # ====== 基本信息 ======
 TITLE = "UNSW Course Agent"
-TAGLINE = "By Jiawei Sun"
+TAGLINE = "UNSW选课智能机器人"
 
 DESC = (
     """
@@ -62,6 +62,15 @@ def do_export_ics():
 THEME = gr.themes.Soft(primary_hue="indigo", neutral_hue="slate")
 
 CSS = """
+body, button, input, textarea {
+  font-family: "Inter", "Noto Sans", "Noto Sans SC", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  color: #1f2937;
+  background-color: #fafafa;
+}
 #header-card {border-radius: 16px; padding: 16px 18px; background: linear-gradient(135deg,#eef2ff, #e0e7ff);}
 #title {text-align:center; font-weight:800; font-size: 28px; letter-spacing: .3px; margin: 6px 0 4px;}
 #tagline {text-align:center; color:#475569; margin: 0 0 10px;}
@@ -71,6 +80,7 @@ CSS = """
 .footer {text-align:center; color:#94a3b8; font-size: 12px; margin-top: 8px;}
 @media (max-width: 640px){ #title{font-size:22px;} }
 """
+
 
 # ====== UI ======
 with gr.Blocks(title=TITLE, theme=THEME, css=CSS, fill_height=True) as demo:
