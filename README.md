@@ -93,7 +93,7 @@ print(agent_respond("COMP9414 评价怎么样"))
 - LangGraph：状态图与路由
 - LangChain Community：DashScope 向量化、FAISS
 - Qwen（DashScope）：意图与对话
-- FAISS：语义检索（可选）
+- FAISS：语义检索
 - pandas：CSV 处理
 - Gradio：Web UI
 - python-dotenv：环境变量加载
@@ -165,10 +165,6 @@ print(agent_respond("COMP9414 评价怎么样"))
 ## 许可证
 MIT，详见 `LICENSE`。
 
----
-
-## 致谢
-UNSW 公开课程信息，LangGraph 与 Gradio 社区，Qwen/DashScope 团队。
 
 
 ---
@@ -268,7 +264,7 @@ Keep secrets only in `.env`. Do not commit.
 - LangGraph (routing, state graph)
 - LangChain Community (DashScope embeddings, FAISS)
 - Qwen (DashScope) for intent and chitchat
-- FAISS for optional semantic retrieval
+- FAISS
 - pandas for CSV
 - Gradio for Web UI
 - python-dotenv for environment config
@@ -336,5 +332,3 @@ MIT. See `LICENSE`.
 
 ---
 
-## Acknowledgements
-UNSW public course facts, the LangGraph and Gradio communities, and Qwen/DashScope.
