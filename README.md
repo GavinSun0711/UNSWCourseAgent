@@ -85,7 +85,6 @@ print(agent_respond("COMP9414 评价怎么样"))
 
 ## 配置项（.env）
 - `DASHSCOPE_API_KEY`：必填，用于 Qwen/DashScope 推理与嵌入。  
-建议仅在本机 `.env` 持有密钥；不要提交到仓库。
 
 ---
 
@@ -113,7 +112,7 @@ print(agent_respond("COMP9414 评价怎么样"))
 ├─ .gitignore
 ├─ .gitattributes
 ├─ .env.example
-├─ course_reviews.jsonl          # 可选：本地口碑语料
+├─ course_reviews.jsonl          
 └─ data/                         # 私有 CSV 可放这里
 ```
 
@@ -256,7 +255,6 @@ Returns a single human-readable string per call. Internally, a LangGraph graph h
 
 ## Configuration (.env)
 - `DASHSCOPE_API_KEY`: required for Qwen/DashScope (LLM and embeddings).  
-Keep secrets only in `.env`. Do not commit.
 
 ---
 
@@ -284,7 +282,7 @@ Dependencies are listed in `requirements.txt`.
 ├─ .gitignore
 ├─ .gitattributes
 ├─ .env.example
-├─ course_reviews.jsonl          # optional: local reviews corpus
+├─ course_reviews.jsonl          
 └─ data/                         # put private CSVs here
 ```
 
