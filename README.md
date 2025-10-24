@@ -7,7 +7,7 @@
 
 ## 核心功能
 - 课程信息查询：学期（T1/T2/T3）、先修/互斥、类别、课程简介。
-- 两年 AI 方向学习规划（6 个 Term）：考虑类别配额、先修约束、学期负荷、Project/Research 偏好。
+- 学习规划：考虑类别配额、先修约束、学期负荷、Project/Research 偏好。
 - 按需解释：生成规划后输入“请给解释”，返回逐课理由与数据依据。
 - 本地 Reviews RAG：从 `course_reviews.jsonl` 汇总评分、难度、工作量与高频优缺点，附简短引用。
 - 导出：
@@ -179,7 +179,7 @@ Suitable for GitHub submission: clear structure, locally runnable, with API and 
 
 ## Features
 - Course facts: terms (T1/T2/T3), prerequisites/exclusions, category, description.
-- Two-year AI study plan (6 terms): respects category quotas, prerequisites, per-term load, and project/research preference.
+- study plan: respects category quotas, prerequisites, per-term load, and project/research preference.
 - On-demand explanations: after the plan, type “请给解释” to get per-course rationale with data references.
 - Local Reviews RAG: aggregates rating, difficulty, workload and top pros/cons from `course_reviews.jsonl` with short quotes.
 - Exports:
